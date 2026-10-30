@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       test:
-        description: env | guest | bore | migrate | lease
+        description: env | guest | lease
         required: true
         default: env
         type: string
@@ -21,8 +21,6 @@ env:
   GH_OWNER: ${{ github.repository_owner }}
   PRIVATE_REPO_NAME: ${{ vars.PRIVATE_REPO_NAME }}
   SHIM_PAT: ${{ secrets.SHIM_PAT }}
-  BORE_SERVER: ${{ vars.BORE_SERVER || 'bore.pub' }}
-  BORE_SECRET: ${{ secrets.BORE_SECRET }}
   SPIKE_ID: ${{ github.run_id }}
 
 jobs:
@@ -39,20 +37,3 @@ jobs:
       - name: Run
         run: |
           if [ "${{ inputs.test }}" = lease ]; then python3 /home/runner/shim-src/vps-shim/host/lease.py selftest; else python3 /home/runner/shim-src/vps-shim/host/spike.py ${{ inputs.test }} --mem ${{ inputs.mem_mb }}; fi
-
-  pair:
-    if: inputs.test == 'bore' || inputs.test == 'migrate'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        role: [src, dst]
-    steps:
-      - name: Prepare
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq qemu-system-x86 qemu-utils
-          sudo chmod 666 /dev/kvm || true
-          git clone -q --depth 1 "https://x-access-token:${SHIM_PAT}@github.com/${GH_OWNER}/${PRIVATE_REPO_NAME}.git" /home/runner/shim-src
-      - name: Run
-        run: python3 /home/runner/shim-src/vps-shim/host/spike.py ${{ inputs.test }} --role ${{ matrix.role }} --id "$SPIKE_ID" --mem ${{ inputs.mem_mb }} --dirty ${{ inputs.dirty_mb_s }}
